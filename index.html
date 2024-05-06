@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>MilcoConnect</title>
+    <base href="/">
+    <meta name="viewport"
+          content="user-scalable=1, initial-scale=1.0, maximum-scale=1, minimum-scale=1, width=device-width" />
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+<input type="file" id="excelFileInput" accept=".xlsx, .xls" />
+<button onclick="convertExcelToJson()">Convert</button>
+<input type="file" id="jsonFileInput" accept=".json" />
+<button onclick="readJsonFile()">Read JSON File</button>
+</body>
+<script>
+  function convertExcelToJson() {
+    var fileInput = document.getElementById("excelFileInput");
+    var file = fileInput.files[0];
+
+    var reader = new FileReader();
+
+    reader.onload = function (e) {
+      var data = new Uint8Array(e.target.result);
+      var workbook = XLSX.read(data, { type: "array" });
+
+      // chọn sheet
+      var worksheet = workbook.Sheets[workbook.SheetNames[2]];
+      var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+      var jsonOutput = {};
+
+      for (var i = 6; i < jsonData.length; i++) {  
+        var fullMessageId = jsonData[i][6];  
+    
+        // Ensure that the fullMessageId is defined and is a string  
+        if (typeof fullMessageId !== 'string') {  
+          continue; // Skip this iteration because fullMessageId is not a string  
+        }  
+    
+        var messageString = jsonData[i][5];  
+        if (typeof messageString !== 'string') {  
+          messageString = ''; // Default to an empty string if undefined or not a string  
+        }  
+    
+        // If the key ends with an underscore and matches precisely "SXXXXXX_", remove the underscore  
+        if (fullMessageId === "SXXXXXX_") {  
+          fullMessageId = fullMessageId.slice(0, -1); // Remove trailing underscore  
+        }  
+    
+        // Directly use the fullMessageId as the key  
+        jsonOutput[fullMessageId] = messageString;  
+      }  
+      
+      console.log(jsonOutput);
+
+      var jsonString = JSON.stringify(jsonOutput, null, 2);
+      var blob = new Blob([jsonString], { type: "application/json" });
+      var url = URL.createObjectURL(blob);
+
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = "output.json";
+      a.click();
+
+      URL.revokeObjectURL(url);
+      // You can handle the JSON data as needed, such as sending it to the server or processing further.
+    };
+
+    reader.readAsArrayBuffer(file);
+  }
+
+  function readJsonFile() {
+    var fileInput = document.getElementById("jsonFileInput");
+    var file = fileInput.files[0];
+
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      var fileContent = e.target.result;
+      var jsonData = JSON.parse(fileContent);
+      console.log(jsonData);
+      // Convert jsonData to an array of objects [{key: value}]
+      var jsonArray = Object.entries(jsonData).map(([key, value]) => ({ key, value }));
+      console.log(jsonArray);
+      const data = jsonArray.map((item) => {
+        var formattedValue = item.value.replace(/\n/g, '\\n').replace(/\r/g, '\\r');
+        return `it('test message ${item.key}', () => {
+                  expect(ja['${item.key}']).toEqual('${formattedValue}');
+                });`
+      });
+      console.log(data);
+
+      // Generate the text file
+      var textData = data.join('\n');
+      var blob = new Blob([textData], { type: 'text/plain' });
+      var downloadLink = document.createElement('a');
+      downloadLink.href = URL.createObjectURL(blob);
+      downloadLink.download = 'testfile.txt';
+      downloadLink.click();
+
+      // You can work with the jsonArray here
+    };
+    reader.readAsText(file);
+  }
+</script>
+</html>
