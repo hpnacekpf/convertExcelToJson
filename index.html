@@ -33,24 +33,42 @@
 
       for (var i = 6; i < jsonData.length; i++) {  
         var fullMessageId = jsonData[i][6];  
-    
+        
         // Ensure that the fullMessageId is defined and is a string  
         if (typeof fullMessageId !== 'string') {  
           continue; // Skip this iteration because fullMessageId is not a string  
         }  
-    
+        
         var messageString = jsonData[i][5];  
         if (typeof messageString !== 'string') {  
           messageString = ''; // Default to an empty string if undefined or not a string  
         }  
-    
-        // If the key ends with an underscore and matches precisely "SXXXXXX_", remove the underscore  
-        if (fullMessageId === "SXXXXXX_") {  
-          fullMessageId = fullMessageId.slice(0, -1); // Remove trailing underscore  
+        
+        // Directly use the fullMessageId as the key if it ends with an underscore  
+        if (fullMessageId.endsWith('_')) {  
+          jsonOutput[fullMessageId] = messageString;  
+        } else {  
+          // Otherwise, parse the messageId and subKey  
+          var match = fullMessageId.match(/(.*?)_(.*)/);  
+          if (match && match.length >= 3) {  
+            var messageId = match[1];  
+            var subKey = match[2];  
+        
+            // Initialize the sub-object if it doesn't already exist  
+            if (!jsonOutput[messageId]) {  
+              jsonOutput[messageId] = {};  
+            }  
+            // Add the sub-key and value  
+            jsonOutput[messageId][subKey] = messageString;  
+        
+          } else {  
+            // No underscore found or the pattern does not match, store the value directly with the fullMessageId  
+            debugger
+            jsonOutput[fullMessageId] = messageString;  
+            // This case assumes that fullMessageId without an underscore should still be stored,  
+            // but you may want to skip it or handle it differently based on your requirements.  
+          }  
         }  
-    
-        // Directly use the fullMessageId as the key  
-        jsonOutput[fullMessageId] = messageString;  
       }  
       
       console.log(jsonOutput);
